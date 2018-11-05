@@ -1,11 +1,11 @@
-package Interface;
+package ca.polymtl.inf8480.tp2.shared;
 
-import java.util.List;
+import java.util.*;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 public interface CalculatorInterface extends Remote {
 	
-	int calculate(List<> operations, String username, String password) throws RemoteException;
+	int calculate(List<String> operations, String username, String password) throws RemoteException;
 	int getCalculatorCapacity() throws RemoteException;
 }
