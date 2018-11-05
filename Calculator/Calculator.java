@@ -1,14 +1,10 @@
 package ca.polymtl.inf8480.tp2.calculator;
 
-import java.rmi.AccessException;
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
+import java.rmi.*;
 import java.rmi.registry.*;
-import java.rmi.server.UnicastRemoteObject;
+import java.rmi.server.*;
 import java.net.*;
-import java.util.List;
-import java.util.HashMap;
-
+import java.util.*;
 
 import ca.polymtl.inf8480.tp2.shared.*;
 
@@ -16,8 +12,11 @@ public class Calculator implements CalculatorInterface {
 	
 	private NameServiceInterface nameServiceStub;
 	
+	private static String calculatorIP;
 	private static int calculatorCapacity;
 	private static int calculatorErrorProb;
+	private static int calculatorPort;
+	private static String nameServiceIP;
 	
 	public Calculator() {
 		
@@ -27,8 +26,16 @@ public class Calculator implements CalculatorInterface {
 	 
 	 public static void main(String args[]) {
 		//Enregistrement de la capacite et de la probabilité d'erreur en variables globales.
-		calculatorCapacity = Integer.parseInt(args[0]);
-		calculatorErrorProb = Integer.parseInt(args[1]);
+		if (args.length == 5) {
+			calculatorIP = args[0];
+			calculatorCapacity = Integer.parseInt(args[1]);
+			calculatorErrorProb = Integer.parseInt(args[2]);
+			calculatorPort = Integer.parseInt(args[3]);
+			nameServiceIP = args[4];
+		} else {
+			System.out.println("Le nombre d'argument est incorrect.");
+			System.exit(1);
+		}
 		 
 		// Lancement le serveur du Calculator
         Calculator calculator = new Calculator();
@@ -45,19 +52,17 @@ public class Calculator implements CalculatorInterface {
 			Registry registry = LocateRegistry.getRegistry(5000);
 			registry.rebind("calculator", stub);
 			System.out.println("Calculator ready.");
-		} catch (ConnectException e) {
-			System.err.println("Impossible de se connecter au registre RMI. Est-ce que rmiregistry est lance ?");
-			System.err.println();
-			System.err.println("Erreur: " + e.getMessage());
 		} catch (Exception e) {
 			System.err.println("Erreur: " + e.getMessage());
 		}
 		
 		// Definition des informations du serveur de nameService.
-	    // Hypothese de simplification : NameService a une adresse IP fixe (172.0.0.1).
-		nameServiceStub = loadNameServiceStub("127.0.0.1");
-	     
-	    setCalculator(stub,calculatorCapacity);
+		nameServiceStub = loadNameServiceStub(nameServiceIP);
+	    try {
+	    	nameServiceStub.setCalculator(calculatorIP,calculatorCapacity,calculatorPort);
+	    } catch (Exception e) {
+			System.err.println("Erreur: " + e.getMessage());
+		}
 	 }
 	 
 	public int calculate(List<String> operations, String username, String password) {
@@ -66,7 +71,8 @@ public class Calculator implements CalculatorInterface {
 		if (nameServiceStub.verifyDispatcher(username, password))
 		{
 			float rate = (operations.size() - calculatorCapacity)/(4*calculatorCapacity);
-			float randomNum = Math.random();
+			Random random = new Random();
+			float randomNum = random.nextFloat();
 			if (rate <= randomNum)
 			{
 				// Diviser l'operande et l'operation en pair ?
@@ -80,19 +86,19 @@ public class Calculator implements CalculatorInterface {
 						value = (value + Operations.prim(op.value)) %4000;
 					else
 					{
-						//
-						value = -3;
+						// Problème de syntaxe dans le fichier.
+						value = -1;
 						break;
 					}
 				}
 			}
 			else
-				//
-				value = -1;
+				// Tache refusée car surcharge.
+				value = -2;
 		}
 		else
-			//
-			value = -2;
+			// Probleme d'identification dispatcher
+			value = -3;
 		return value;
 	}
 	
