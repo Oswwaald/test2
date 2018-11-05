@@ -1,7 +1,6 @@
 package ca.polymtl.inf8480.tp2.dispatcher;
 
 import java.util.*;
-import java.util.concurrent.*;
 import java.io.*;
 import java.rmi.*;
 import java.rmi.registry.*;
@@ -15,25 +14,27 @@ public class Dispatcher {
 
 	private List<String> fileLines = new ArrayList<String>();
 	
-	private static String dispatcherUsername;
-	private static String dispatcherPassword;
+	public static String dispatcherFile;
+	public static String dispatcherUsername;
+	public static String dispatcherPassword;
 	private static boolean dispatcherSecureMode;
-	
-	private List<List<String>> tasksToDo;
 	
 	/*
 	 * Recuperation des arguments fournis dans la commande.
 	 */
 	public static void main(String[] args) {
-		
-		//     Dispatcher dispatcher = new Dispatcher();
-		//     dispatcher.run();
-		
 		//Enregistrement de l'identifiants et du mot de passe en variable local.
-		dispatcherUsername = args[0];
-		dispatcherPassword = args[1];
-		dispatcherSecureMode = Boolean.parseBoolean(args[2]);
+		dispatcherFile = args[0];
+		dispatcherUsername = args[1];
+		dispatcherPassword = args[2];
+		dispatcherSecureMode = Boolean.parseBoolean(args[3]);
 		
+		try {
+			Dispatcher dispatcher = new Dispatcher(dispatcherFile,dispatcherUsername,dispatcherPassword,dispatcherSecureMode);
+			dispatcher.run();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}		
 	}
 	
 	public Dispatcher(String file, String username, String password, boolean secureMode) throws IOException {
@@ -45,27 +46,11 @@ public class Dispatcher {
 		{	
 			fileLines.add(line);
 		}
+		br.close();
 
 		// Definition des informations du serveur de nameService.
 		// Hypothese de simplification : NameService a une adresse IP fixe (172.0.0.1).
 		nameServiceStub = loadNameServiceStub("127.0.0.1");
-		
-		/*
-		ServerInterface stub = null;
-
-		ServerInterface stub = null;
-
-        try {
-            Registry registry = LocateRegistry.getRegistry(hostname, port);
-            stub = (ServerInterface) registry.lookup("server");
-        } catch (NotBoundException e) {
-            System.out.println("Erreur: Le nom '" + e.getMessage() + "' n'est pas défini dans le registre.");
-        } catch (AccessException e) {
-            System.out.println("Erreur: " + e.getMessage());
-        } catch (RemoteException e) {
-            System.out.println("Erreur: " + e.getMessage());
-        }
-		*/
 		
 		// Recuperer de la liste des calculators references dans NameService.
 		try {
@@ -78,7 +63,7 @@ public class Dispatcher {
 		// Lancement du mode de calcul selon la securite du mode,
 		// Et recuperation du resultat et des temps de calcul.
 		long startedTime = System.nanoTime();
-		if (secureMode) {
+		if (dispatcherSecureMode) {
 			secureCalculation(dispatcherUsername, dispatcherPassword);
 		} 
 		else {
@@ -102,77 +87,122 @@ public class Dispatcher {
 		
 		//Inititialisation du résultat final
 		int resultat = 0;
-		
-		// Lancement de l'executeur de Threads
-		ExecutorService executor = Executors.newCachedThreadPool();
-     
-		for (CalculatorInterface calculator: calculatorStub)
+   
+
+		// TODO
+		while (fileLines.size() != 0)
 		{
-			List<String> task = fileLines.subList(Math.max(fileLines.size() - (calculatorStub.key * 2), 0), fileLines.size());
-			//calculatorStub.calculate(task, username, password);
-			fileLines.removeAll(task);
-			tasksToDo.add(task);
-		}
-	 
-		// Envoi des Threads.
-		for (List<String> task : tasksToDo)
-		{
-			ecs.submit(task);
-		}
-		
-		while (tasksToDo.size() != 0)
-		{
-			int result = ecs.take().get();
-			 
-			switch (result)
+			ArrayList<ManageCommunicationThread> listThreads = new ArrayList<ManageCommunicationThread>();
+			for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet())
 			{
+				List<String> task = fileLines.subList(Math.max(fileLines.size() - (calculator.getValue() * 2), 0), fileLines.size());
+				ManageCommunicationThread thread = new ManageCommunicationThread(calculator.getKey(),new ArrayList <String>(task));
+				thread.start();
+				listThreads.add(thread);
+				//calculatorStub.calculate(task, username, password);
+				fileLines.removeAll(task);
+			}
 			
-			// L'erreur -1 met en évidence un problème de syntaxe dans le contenu du fichier (notamment sur la composition des opérations).
-			// Interruption du calcul et renvoie de message à l'utilisateur.
-			case -1:
-				System.out.println("Calcul impossible : Revoir le contenu du fichier transmis.");
-				System.exit(1);
-			
-			//
-			//
-			case -2:
-				System.out.println("Le serveur a refusé la tâche");
-				ecs.submit(task);
-				break;
-			
-			//	
-			case -3:
-				System.out.println("Le serveur de calcul n'a pas pu authentifier le répartiteur.");
-				ecs.submit(task);
-				break;
-				 
-			// Le calcul s'est effectué sans encombre, on ajoute cet nouvelle valeur au résultat global.
-			default:
-				resultat = (resultat + result) % 4000;
+			for (ManageCommunicationThread thread : listThreads) {
+				try {
+					thread.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				
+				int result = thread.resultat;
+				switch (result)
+				{
+				
+				// L'erreur -1 met en évidence un problème de syntaxe dans le contenu du fichier (notamment sur la composition des opérations).
+				// Interruption du calcul et renvoie de message à l'utilisateur.
+				case -1:
+					System.out.println("Calcul impossible : Revoir le contenu du fichier transmis.");
+					System.exit(1);
+				
+				// L'erreur -2 met en evidence un problème de surcharge du Calculator. 
+				// Interruption de la tâche et renvoie de la tache au Calculator.
+				case -2:
+					System.out.println("Surcharge du Calculator : Renvoi de la tache.");
+					thread.start();
+					listThreads.add(thread);
+					break;
+				
+				//	L'erreur -2 met en evidence un problème d'identification au niveau du Dispatcher.
+				// Interruption du calcul et renvoie de message à l'utilisateur.
+				case -3:
+					System.out.println("Echec de l'identification Dispatcher : Revoir les identifiants Dispatcher.");
+					System.exit(1);
+					break;
+					 
+				// Le calcul s'est effectué correctement, on ajoute cette nouvelle valeur au résultat global.
+				default:
+					resultat = (resultat + result) % 4000;
+				}
 			}
 		}
 		System.out.printf("Le resultat du calcul est : ", resultat);
 	}
-	 
+
 	// DOUBLONS de secure !!!!!
-	private int unSecureCalculation(String username, String password) {
-		int total = total;
-	 
-		//Executor executor = Executors.newCachedThreadPool();
-		//ExecutorCompletionService<ClientTask.ClientTaskInfo> ecs = new ExecutorCompletionService<>(ex);
-     
-		for (CalculatorInterface calculator: calculators)
+	private void unSecureCalculation(String username, String password) {
+		
+		//Inititialisation du résultat final
+		int resultat = 0;
+
+		// TODO
+		while (fileLines.size() != 0)
 		{
-			List<String> task = fileLines.subList(Math.max(fileLines.size() - (calculator.value * 2), 0), filelines.size());
-			//calculatorStub.calculate(task, username, password);
-			fileLines.removeAll(task);		
-		 	tasks.add(task);
+			ArrayList<ManageCommunicationThread> listThreads = new ArrayList<ManageCommunicationThread>();
+			for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet())
+			{
+				List<String> task = fileLines.subList(Math.max(fileLines.size() - (calculator.getValue() * 2), 0), fileLines.size());
+				ManageCommunicationThread thread = new ManageCommunicationThread(calculator.getKey(),new ArrayList <String>(task));
+				thread.start();
+				listThreads.add(thread);
+				//calculatorStub.calculate(task, username, password);
+				fileLines.removeAll(task);
+			}
+			
+			for (ManageCommunicationThread thread : listThreads) {
+				try {
+					thread.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				
+				int result = thread.resultat;
+				switch (result)
+				{
+				
+				// L'erreur -1 met en évidence un problème de syntaxe dans le contenu du fichier (notamment sur la composition des opérations).
+				// Interruption du calcul et renvoie de message à l'utilisateur.
+				case -1:
+					System.out.println("Calcul impossible : Revoir le contenu du fichier transmis.");
+					System.exit(1);
+				
+				// L'erreur -2 met en evidence un problème de surcharge du Calculator. 
+				// Interruption de la tâche et renvoie de la tache au Calculator.
+				case -2:
+					System.out.println("Surcharge du Calculator : Renvoi de la tache.");
+					thread.start();
+					listThreads.add(thread);
+					break;
+				
+				//	L'erreur -2 met en evidence un problème d'identification au niveau du Dispatcher.
+				// Interruption du calcul et renvoie de message à l'utilisateur.
+				case -3:
+					System.out.println("Echec de l'identification Dispatcher : Revoir les identifiants Dispatcher.");
+					System.exit(1);
+					break;
+					 
+				// Le calcul s'est effectué correctement, on ajoute cette nouvelle valeur au résultat global.
+				default:
+					resultat = (resultat + result) % 4000;
+				}
+			}
 		}
-	 
-		for (List<String> task : tasksToDo)
-		{
-			ecs.submit(task);
-		}
+		System.out.printf("Le resultat du calcul est : ", resultat);
 	}
 	
 	private NameServiceInterface loadNameServiceStub(String hostname) {
