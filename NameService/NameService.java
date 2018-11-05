@@ -11,10 +11,10 @@ public class NameService implements NameServiceInterface {
 	
 	private String usernameDispatcher;
 	private String passwordDispatcher;
-	private HashMap<CalculatorInterface, Integer> calculators;
+	private HashMap<String, Integer> calculators;
 	
     private NameService() {
-    	calculators = new HashMap<CalculatorInterface, Integer>();
+    	calculators = new HashMap<String, Integer>();
     }
     
     public static void main(String args[]) {
@@ -39,7 +39,9 @@ public class NameService implements NameServiceInterface {
 			System.err.println("Erreur: " + e.getMessage());
 		}
     }
-
+    /*
+     * Verification des identifiants du Dispatcher. Les identifiants ont prealablement ete envoye par le Dispatcher au moment de sa requetes d'obtention de la liste des Calculators disponibles.
+     */
 	public boolean verifyDispatcher(String username, String password) {
 		boolean verification = false;
 		try
@@ -56,13 +58,20 @@ public class NameService implements NameServiceInterface {
 		return verification;
 	}
 	
-	public HashMap<CalculatorInterface, Integer> getCalculators(String username, String password){
+	/*
+	 * Recuperation de la liste des calculators disponibles pour le Dispatcher.
+	 */
+	public HashMap<String, Integer> getCalculators(String username, String password){
 		usernameDispatcher = username;
 		passwordDispatcher = password;
 		return calculators;
 		
 	}
-	public void setCalculator(CalculatorInterface calculator, int capacity){
+	
+	/*
+	 * Remplissage de la liste de Calculators disponibles et de leur capacite respective.
+	 */
+	public void setCalculator(String calculator, int capacity){
 		calculators.putIfAbsent(calculator, capacity);
 	}
 }
