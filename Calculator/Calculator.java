@@ -16,6 +16,7 @@ public class Calculator implements CalculatorInterface {
 	private static int calculatorCapacity;
 	private static int calculatorErrorProb;
 	private static int calculatorPort;
+	private static Configuration configuration;
 	private static String nameServiceIP;
 	
 	public Calculator() {
@@ -32,6 +33,7 @@ public class Calculator implements CalculatorInterface {
 			calculatorErrorProb = Integer.parseInt(args[2]);
 			calculatorPort = Integer.parseInt(args[3]);
 			nameServiceIP = args[4];
+			configuration = new Configuration(calculatorIP,calculatorPort,calculatorCapacity);
 		} else {
 			System.out.println("Le nombre d'argument est incorrect.");
 			System.exit(1);
@@ -59,65 +61,67 @@ public class Calculator implements CalculatorInterface {
 		// Definition des informations du serveur de nameService.
 		nameServiceStub = loadNameServiceStub(nameServiceIP);
 	    try {
-	    	nameServiceStub.setCalculator(calculatorIP,calculatorCapacity,calculatorPort);
+	    	nameServiceStub.setCalculator(configuration.unique(),configuration);
 	    } catch (Exception e) {
 			System.err.println("Erreur: " + e.getMessage());
 		}
 	 }
 	 
-	public int calculate(List<String> operations, String username, String password) {
-		double value = 0;
+	public int calculate(List<String> task, String username, String password) {
+		int value = 0;
 		
-		if (nameServiceStub.verifyDispatcher(username, password))
-		{
-			float rate = (operations.size() - calculatorCapacity)/(4*calculatorCapacity);
-			Random random = new Random();
-			float randomNum = random.nextFloat();
-			if (rate <= randomNum)
+		try {
+			if (nameServiceStub.verifyDispatcher(username, password))
 			{
-				// Diviser l'operande et l'operation en pair ?
-				HashMap<String, Integer> ops = new HashMap<String, Integer>();
-				ops = splitOperations(operations);
-				for (HashMap<String, Integer> op : ops)
+				float rate = (task.size() - calculatorCapacity)/(4*calculatorCapacity);
+				Random random = new Random();
+				float randomNum = random.nextFloat();
+				if (rate <= randomNum)
 				{
-					if(op.key == "pell")
-						value = (value + Operations.pell(op.value)) %4000;
-					else if(op.key == "prim")
-						value = (value + Operations.prim(op.value)) %4000;
-					else
+					HashMap<String, Integer> operationElements = new HashMap<String, Integer>();
+					operationElements = splitOperations(task);
+					//Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet()
+					//Map.Entry<CalculatorInterface, Integer> calculator: operationElements.entrySet()
+					//HashMap<String, Integer> op : operationElements
+					for (Map.Entry<String, Integer> op : operationElements.entrySet())
 					{
-						// Problème de syntaxe dans le fichier.
-						value = -1;
-						break;
+						if(op.getKey() == "pell")
+							value = (value + Operations.pell(op.getValue())) %4000;
+						else if(op.getKey() == "prim")
+							value = (value + Operations.prime(op.getValue())) %4000;
+						else
+						{
+							// Problème de syntaxe dans le fichier.
+							value = -1;
+							break;
+						}
 					}
 				}
+				else
+					// Tache refusée car surcharge.
+					value = -2;
 			}
 			else
-				// Tache refusée car surcharge.
-				value = -2;
+				// Probleme d'identification Dispatcher
+				value = -3;
+		} catch (RemoteException e) {
+			e.printStackTrace();
 		}
-		else
-			// Probleme d'identification dispatcher
-			value = -3;
 		return value;
 	}
 	
-	public int getCalculatorCapacity() {
-		return calculatorCapacity;
-	}
-	
-	private HashMap<String, Integer> splitOperations(List<String> operations) {		
-		HashMap<String, Integer> values = new HashMap<String, Integer>();
-		foreach (String op in operations){
+	private HashMap<String, Integer> splitOperations(List<String> task) {		
+		HashMap<String, Integer> operationElements = new HashMap<String, Integer>();
+		for (String op : task){
 			String operation;
 			int operande;
 			String[] arguments = op.split(" ");
 			operation = arguments[0];
 			operande = Integer.parseInt(arguments[1]);
-			values.put(operation, operande);
+			operationElements.put(operation, operande);
 
 		}
-		return values;
+		return operationElements;
 	}
 	
 	private NameServiceInterface loadNameServiceStub(String hostname) {
@@ -133,7 +137,6 @@ public class Calculator implements CalculatorInterface {
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		}
-
 		return stub;
 	}
 }
