@@ -7,5 +7,4 @@ import java.rmi.RemoteException;
 public interface CalculatorInterface extends Remote {
 	
 	int calculate(List<String> operations, String username, String password) throws RemoteException;
-	int getCalculatorCapacity() throws RemoteException;
 }
