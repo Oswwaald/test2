@@ -1,8 +1,11 @@
-package NameService;
-import java.rmi.RemoteException;
+package ca.polymtl.inf8480.tp2.nameService;
+
+import java.rmi.*;
+import java.rmi.registry.*;
+import java.rmi.server.*;
 import java.util.HashMap;
 
-import Interface.CalculatorInterface;
+import ca.polymtl.inf8480.tp2.shared.*;
 
 public class NameService implements NameServiceInterface {
 	
@@ -15,27 +18,42 @@ public class NameService implements NameServiceInterface {
     }
     
     public static void main(String args[]) {
-    	NameService ns = new NameService();
-    	ns.run();
+    	NameService nameService = new NameService();
+    	nameService.run();
     }
     
+    /*
+	 * Mise en service du NameService pour la procédure RMI.
+	 */
     private void run() {
-    	//TODO
+		try {
+			NameServiceInterface stub = (NameServiceInterface) UnicastRemoteObject.exportObject(this, 5000);
+			Registry registry = LocateRegistry.getRegistry(5000);
+			registry.rebind("nameservice", stub);
+			System.out.println("NameService ready.");
+		} catch (ConnectException e) {
+			System.err.println("Impossible de se connecter au registre RMI. Est-ce que rmiregistry est lance ?");
+			System.err.println();
+			System.err.println("Erreur: " + e.getMessage());
+		} catch (Exception e) {
+			System.err.println("Erreur: " + e.getMessage());
+		}
     }
-    
+
 	public boolean verifyDispatcher(String username, String password) {
+		boolean verification = false;
 		try
 		{
 			if (username == usernameDispatcher && password == passwordDispatcher) 
-				return true;
+				verification = true;
 			else
-				return false;
+				verification = false;
 		}
-		
 		catch (Exception e)
 		{
 			System.err.println("Erreur: " + e.getMessage());
-		}	
+		}
+		return verification;
 	}
 	
 	public HashMap<CalculatorInterface, Integer> getCalculators(String username, String password){
