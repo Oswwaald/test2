@@ -8,20 +8,20 @@ import ca.polymtl.inf8480.tp2.shared.*;
 public class ManageCommunicationThread extends Thread{
 	
 	private CalculatorInterface calculator;
-	private ArrayList<String> tasks;
+	private ArrayList<String> task;
 	public int resultat;
 	
 	public void run() {
 		try {
-			resultat = calculator.calculate(tasks, Dispatcher.dispatcherUsername, Dispatcher.dispatcherPassword);
+			resultat = calculator.calculate(task, Dispatcher.dispatcherUsername, Dispatcher.dispatcherPassword);
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		}
 	}
 
-	public ManageCommunicationThread(CalculatorInterface _calculator, ArrayList<String> _tasks) {
+	public ManageCommunicationThread(CalculatorInterface _calculator, ArrayList<String> taskSent) {
 		super();
 		calculator = _calculator;
-		tasks = _tasks;
+		task = taskSent;
 	}
 }
