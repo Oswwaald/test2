@@ -11,10 +11,10 @@ public class NameService implements NameServiceInterface {
 	
 	private String usernameDispatcher;
 	private String passwordDispatcher;
-	private HashMap<String, Integer> calculators;
+	private HashMap<String, Configuration> calculators;
 	
     private NameService() {
-    	calculators = new HashMap<String, Integer>();
+    	calculators = new HashMap<String, Configuration>();
     }
     
     public static void main(String args[]) {
@@ -61,17 +61,16 @@ public class NameService implements NameServiceInterface {
 	/*
 	 * Recuperation de la liste des calculators disponibles pour le Dispatcher.
 	 */
-	public HashMap<String, Integer> getCalculators(String username, String password){
+	public HashMap<String, Configuration> getCalculators(String username, String password){
 		usernameDispatcher = username;
 		passwordDispatcher = password;
 		return calculators;
-		
 	}
 	
 	/*
 	 * Remplissage de la liste de Calculators disponibles et de leur capacite respective.
 	 */
-	public void setCalculator(String calculator, int capacity){
-		calculators.putIfAbsent(calculator, capacity);
+	public void setCalculator(String name, Configuration configuration){
+		calculators.putIfAbsent(name, configuration);
 	}
 }
