@@ -10,7 +10,8 @@ import ca.polymtl.inf8480.tp2.shared.*;
 public class Dispatcher {
 
 	private NameServiceInterface nameServiceStub;
-	private HashMap<CalculatorInterface, Integer> calculatorStub;
+	private HashMap <CalculatorInterface, Integer> calculatorsStub; 
+	private HashMap<String, Configuration> calculatorInformation;
 
 	private List<String> fileLines = new ArrayList<String>();
 	
@@ -48,17 +49,21 @@ public class Dispatcher {
 		}
 		br.close();
 
-		// Definition des informations du serveur de nameService.
+		// Definition du stub du serveur de nameService.
 		// Hypothese de simplification : NameService a une adresse IP fixe (172.0.0.1).
 		nameServiceStub = loadNameServiceStub("127.0.0.1");
 		
+				
 		// Recuperer de la liste des calculators references dans NameService.
 		try {
-			calculatorStub = nameServiceStub.getCalculators(dispatcherUsername, dispatcherPassword);
+			calculatorInformation = nameServiceStub.getCalculators(dispatcherUsername, dispatcherPassword);
 		}
 		catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		}
+		// Definition des stubs de Calculators.
+		calculatorsStub = loadCalculatorStub(calculatorInformation);
+		
 		
 		// Lancement du mode de calcul selon la securite du mode,
 		// Et recuperation du resultat et des temps de calcul.
@@ -93,13 +98,13 @@ public class Dispatcher {
 		while (fileLines.size() != 0)
 		{
 			ArrayList<ManageCommunicationThread> listThreads = new ArrayList<ManageCommunicationThread>();
-			for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet())
+			//for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet())
+			for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorsStub.entrySet())
 			{
 				List<String> task = fileLines.subList(Math.max(fileLines.size() - (calculator.getValue() * 2), 0), fileLines.size());
 				ManageCommunicationThread thread = new ManageCommunicationThread(calculator.getKey(),new ArrayList <String>(task));
 				thread.start();
 				listThreads.add(thread);
-				//calculatorStub.calculate(task, username, password);
 				fileLines.removeAll(task);
 			}
 			
@@ -114,7 +119,7 @@ public class Dispatcher {
 				switch (result)
 				{
 				
-				// L'erreur -1 met en évidence un problème de syntaxe dans le contenu du fichier (notamment sur la composition des opérations).
+				// L'erreur -1 met en evidence un probleme de syntaxe dans le contenu du fichier (notamment sur la composition des operations).
 				// Interruption du calcul et renvoie de message à l'utilisateur.
 				case -1:
 					System.out.println("Calcul impossible : Revoir le contenu du fichier transmis.");
@@ -128,14 +133,14 @@ public class Dispatcher {
 					listThreads.add(thread);
 					break;
 				
-				//	L'erreur -2 met en evidence un problème d'identification au niveau du Dispatcher.
+				//	L'erreur -2 met en evidence un probleme d'identification au niveau du Dispatcher.
 				// Interruption du calcul et renvoie de message à l'utilisateur.
 				case -3:
 					System.out.println("Echec de l'identification Dispatcher : Revoir les identifiants Dispatcher.");
 					System.exit(1);
 					break;
 					 
-				// Le calcul s'est effectué correctement, on ajoute cette nouvelle valeur au résultat global.
+				// Le calcul s'est effectue correctement, on ajoute cette nouvelle valeur au resultat global.
 				default:
 					resultat = (resultat + result) % 4000;
 				}
@@ -145,22 +150,24 @@ public class Dispatcher {
 	}
 
 	// DOUBLONS de secure !!!!!
+	// Faire un test sur les serveurs avant de passer en ModeSecure ??????
 	private void unSecureCalculation(String username, String password) {
 		
 		//Inititialisation du résultat final
 		int resultat = 0;
+   
 
 		// TODO
 		while (fileLines.size() != 0)
 		{
 			ArrayList<ManageCommunicationThread> listThreads = new ArrayList<ManageCommunicationThread>();
-			for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet())
+			//for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet())
+			for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorsStub.entrySet())
 			{
 				List<String> task = fileLines.subList(Math.max(fileLines.size() - (calculator.getValue() * 2), 0), fileLines.size());
 				ManageCommunicationThread thread = new ManageCommunicationThread(calculator.getKey(),new ArrayList <String>(task));
 				thread.start();
 				listThreads.add(thread);
-				//calculatorStub.calculate(task, username, password);
 				fileLines.removeAll(task);
 			}
 			
@@ -175,7 +182,7 @@ public class Dispatcher {
 				switch (result)
 				{
 				
-				// L'erreur -1 met en évidence un problème de syntaxe dans le contenu du fichier (notamment sur la composition des opérations).
+				// L'erreur -1 met en evidence un probleme de syntaxe dans le contenu du fichier (notamment sur la composition des operations).
 				// Interruption du calcul et renvoie de message à l'utilisateur.
 				case -1:
 					System.out.println("Calcul impossible : Revoir le contenu du fichier transmis.");
@@ -189,14 +196,14 @@ public class Dispatcher {
 					listThreads.add(thread);
 					break;
 				
-				//	L'erreur -2 met en evidence un problème d'identification au niveau du Dispatcher.
+				//	L'erreur -2 met en evidence un probleme d'identification au niveau du Dispatcher.
 				// Interruption du calcul et renvoie de message à l'utilisateur.
 				case -3:
 					System.out.println("Echec de l'identification Dispatcher : Revoir les identifiants Dispatcher.");
 					System.exit(1);
 					break;
 					 
-				// Le calcul s'est effectué correctement, on ajoute cette nouvelle valeur au résultat global.
+				// Le calcul s'est effectue correctement, on ajoute cette nouvelle valeur au resultat global.
 				default:
 					resultat = (resultat + result) % 4000;
 				}
@@ -218,7 +225,29 @@ public class Dispatcher {
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		}
-
 		return stub;
+	}
+	
+	private HashMap<CalculatorInterface, Integer> loadCalculatorStub(HashMap<String, Configuration> calculatorInformation) {
+		int capac = 0;
+		CalculatorInterface stub = null;
+		HashMap<CalculatorInterface, Integer> localStub = new HashMap<CalculatorInterface, Integer>();
+		// En cours
+		for (Map.Entry<String, Configuration> conf : calculatorInformation.entrySet()) {
+			try {
+				Registry registry = LocateRegistry.getRegistry(conf.getKey(),conf.getValue().calculatorPort);
+				stub = (CalculatorInterface) registry.lookup("calculator");
+				capac = conf.getValue().calculatorCapacity;
+				localStub.put(stub,capac);
+			} catch (NotBoundException e) {
+				System.out.println("Erreur: Le nom '" + e.getMessage()
+						+ "' n'est pas défini dans le registre.");
+			} catch (AccessException e) {
+				System.out.println("Erreur: " + e.getMessage());
+			} catch (RemoteException e) {
+				System.out.println("Erreur: " + e.getMessage());
+			}
+		}
+		return localStub;
 	}
 }
