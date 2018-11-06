@@ -98,12 +98,14 @@ public class Dispatcher {
 				fileLines.removeAll(task);
 			}
 			
-			// Attente de resultat des Threads.
+			// Attente de resultat des Threads et gestion du renvoi d'une tache en cas de serveur inaccessible.
 			for (ManageCommunicationThread thread : listThreads) {
 				try {
 					thread.join();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
+					calculatorsStub.remove(thread.calculatorThread);
+					fileLines.addAll(thread.taskThread);
 				}
 				
 				int result = thread.resultat;
