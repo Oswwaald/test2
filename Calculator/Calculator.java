@@ -26,7 +26,8 @@ public class Calculator implements CalculatorInterface {
 	 }
 	 
 	 public static void main(String args[]) {
-		//Enregistrement de la capacite et de la probabilité d'erreur en variables globales.
+		
+		//Enregistrement de la capacite et de la probabilite d'erreur en variables globales.
 		if (args.length == 5) {
 			calculatorIP = args[0];
 			calculatorCapacity = Integer.parseInt(args[1]);
@@ -45,14 +46,14 @@ public class Calculator implements CalculatorInterface {
 	 }
 	 
 	 /*
-	  * Mise en service du Calculator pour la procédure RMI.
+	  * Mise en service du Calculator pour la procedure RMI.
 	  */
 	 private void run() {
 		try {
 			System.setProperty("rmi.server.hostname", Inet4Address.getLocalHost().getHostName());
 			CalculatorInterface stub = (CalculatorInterface) UnicastRemoteObject.exportObject(this, 5000);
 			Registry registry = LocateRegistry.getRegistry(5000);
-			registry.rebind("calculator", stub);
+			registry.rebind(configuration.unique(), stub);
 			System.out.println("Calculator ready.");
 		} catch (Exception e) {
 			System.err.println("Erreur: " + e.getMessage());
@@ -80,9 +81,8 @@ public class Calculator implements CalculatorInterface {
 				{
 					HashMap<String, Integer> operationElements = new HashMap<String, Integer>();
 					operationElements = splitOperations(task);
-					//Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet()
-					//Map.Entry<CalculatorInterface, Integer> calculator: operationElements.entrySet()
-					//HashMap<String, Integer> op : operationElements
+					
+					// Lancement du calcul avec les operateurs et les operandes.
 					for (Map.Entry<String, Integer> op : operationElements.entrySet())
 					{
 						if(op.getKey() == "pell")
@@ -91,18 +91,18 @@ public class Calculator implements CalculatorInterface {
 							value = (value + Operations.prime(op.getValue())) %4000;
 						else
 						{
-							// Problème de syntaxe dans le fichier.
+							// Probleme de syntaxe dans le fichier.
 							value = -1;
 							break;
 						}
 					}
 				}
 				else
-					// Tache refusée car surcharge.
+					// Tache refusee car surcharge.
 					value = -2;
 			}
 			else
-				// Probleme d'identification Dispatcher
+				// Probleme d'identification Dispatcher.
 				value = -3;
 		} catch (RemoteException e) {
 			e.printStackTrace();
@@ -110,6 +110,9 @@ public class Calculator implements CalculatorInterface {
 		return value;
 	}
 	
+	/*
+	 * Transformation de chaque ligne (String) en 2 arguments (String + Integer) sous forme de HashMap.
+	 */
 	private HashMap<String, Integer> splitOperations(List<String> task) {		
 		HashMap<String, Integer> operationElements = new HashMap<String, Integer>();
 		for (String op : task){
@@ -119,25 +122,27 @@ public class Calculator implements CalculatorInterface {
 			operation = arguments[0];
 			operande = Integer.parseInt(arguments[1]);
 			operationElements.put(operation, operande);
-
 		}
 		return operationElements;
 	}
 	
+	/*
+	 * Mise en place de la recuperation d'acces au NameService par le RMI, sous le format stub.
+	 */	
 	private NameServiceInterface loadNameServiceStub(String hostname) {
 		NameServiceInterface stub = null;
+		// Le port du NameService est defini arbitrairement a 5000.
 		try {
 			Registry registry = LocateRegistry.getRegistry(hostname,5000);
 			stub = (NameServiceInterface) registry.lookup("nameservice");
 		} catch (NotBoundException e) {
 			System.out.println("Erreur: Le nom '" + e.getMessage()
-					+ "' n'est pas défini dans le registre.");
+					+ "' n'est pas defini dans le registre.");
 		} catch (AccessException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		}
-
 		return stub;
 	}
 }
