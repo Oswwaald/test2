@@ -11,7 +11,7 @@ public class Dispatcher {
 
 	private NameServiceInterface nameServiceStub;
 	private HashMap <CalculatorInterface, Integer> calculatorsStub; 
-	private HashMap<String, Configuration> calculatorInformation;
+	private ArrayList<Configuration> calculatorInformation;
 
 	private List<String> fileLines = new ArrayList<String>();
 	
@@ -228,16 +228,16 @@ public class Dispatcher {
 		return stub;
 	}
 	
-	private HashMap<CalculatorInterface, Integer> loadCalculatorStub(HashMap<String, Configuration> calculatorInformation) {
+	private HashMap<CalculatorInterface, Integer> loadCalculatorStub(ArrayList<Configuration> calculatorInformation) {
 		int capac = 0;
 		CalculatorInterface stub = null;
 		HashMap<CalculatorInterface, Integer> localStub = new HashMap<CalculatorInterface, Integer>();
 		// En cours
-		for (Map.Entry<String, Configuration> conf : calculatorInformation.entrySet()) {
+		for (Configuration conf : calculatorInformation) {
 			try {
-				Registry registry = LocateRegistry.getRegistry(conf.getKey(),conf.getValue().calculatorPort);
-				stub = (CalculatorInterface) registry.lookup("calculator");
-				capac = conf.getValue().calculatorCapacity;
+				Registry registry = LocateRegistry.getRegistry(conf.calculatorIP,conf.calculatorPort);
+				stub = (CalculatorInterface) registry.lookup(conf.unique());
+				capac = conf.calculatorCapacity;
 				localStub.put(stub,capac);
 			} catch (NotBoundException e) {
 				System.out.println("Erreur: Le nom '" + e.getMessage()
