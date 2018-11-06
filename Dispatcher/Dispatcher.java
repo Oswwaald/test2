@@ -35,6 +35,10 @@ public class Dispatcher {
 		}		
 	}
 	
+	public void run(){
+		//Pas de stub pour le dispatcher.
+	}
+	
 	public Dispatcher(String file, String username, String password, boolean secureMode) throws IOException {
 		
 		// Repartition du contenu du fichier en ligne dans la liste fileLines.
@@ -60,7 +64,6 @@ public class Dispatcher {
 		// Recuperation des stubs de Calculators.
 		calculatorsStub = loadCalculatorStub(calculatorInformation);
 		
-		
 		// Lancement du mode de calcul selon la securite du mode,
 		// Et recuperation du resultat et des temps de calcul.
 		long startedTime = System.nanoTime();
@@ -74,13 +77,6 @@ public class Dispatcher {
         System.out.println(String.format("Le temps de calcul est de : ", finishedTime - startedTime));
 	}
 	
-	//
-	public void run(){
-		
-		//Pas de stub pour le dispatcher.
-		
-	}
-	
 	/*
 	 * Calcul du fichier dans le mode securise. 
 	 */
@@ -89,12 +85,10 @@ public class Dispatcher {
 		//Inititialisation du resultat final
 		int resultat = 0;
    
-
-		// TODO
 		while (fileLines.size() != 0)
 		{
+			// Lancement des Threads en fonction de la capacite des Calculators.
 			ArrayList<ManageCommunicationThread> listThreads = new ArrayList<ManageCommunicationThread>();
-			//for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet())
 			for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorsStub.entrySet())
 			{
 				List<String> task = fileLines.subList(Math.max(fileLines.size() - (calculator.getValue() * 2), 0), fileLines.size());
@@ -104,6 +98,7 @@ public class Dispatcher {
 				fileLines.removeAll(task);
 			}
 			
+			// Attente de resultat des Threads.
 			for (ManageCommunicationThread thread : listThreads) {
 				try {
 					thread.join();
@@ -129,7 +124,7 @@ public class Dispatcher {
 					listThreads.add(thread);
 					break;
 				
-				//	L'erreur -2 met en evidence un probleme d'identification au niveau du Dispatcher.
+				// L'erreur -2 met en evidence un probleme d'identification au niveau du Dispatcher.
 				// Interruption du calcul et renvoie de message a l'utilisateur.
 				case -3:
 					System.out.println("Echec de l'identification Dispatcher : Revoir les identifiants Dispatcher.");
@@ -152,12 +147,10 @@ public class Dispatcher {
 		//Inititialisation du resultat final
 		int resultat = 0;
    
-
 		// TODO
 		while (fileLines.size() != 0)
 		{
 			ArrayList<ManageCommunicationThread> listThreads = new ArrayList<ManageCommunicationThread>();
-			//for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorStub.entrySet())
 			for (Map.Entry<CalculatorInterface, Integer> calculator: calculatorsStub.entrySet())
 			{
 				List<String> task = fileLines.subList(Math.max(fileLines.size() - (calculator.getValue() * 2), 0), fileLines.size());
@@ -203,8 +196,9 @@ public class Dispatcher {
 				}
 			}
 		}
-		System.out.printf("Le resultat du calcul est : ", resultat);
-	}
+		// Tous les serveurs sont verifies, on peut lancer le calcul en mode secure.
+		secureCalculation(username, password);
+		}
 	/*
 	 * Mise en place de la recuperation d'acces au NameService par le RMI, sous le format stub.
 	 */	
