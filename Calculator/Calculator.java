@@ -61,7 +61,7 @@ public class Calculator implements CalculatorInterface {
 		// Definition des informations du serveur de nameService.
 		nameServiceStub = loadNameServiceStub(nameServiceIP);
 	    try {
-	    	nameServiceStub.setCalculator(configuration.unique(),configuration);
+	    	nameServiceStub.setCalculator(configuration);
 	    } catch (Exception e) {
 			System.err.println("Erreur: " + e.getMessage());
 		}
@@ -137,6 +137,7 @@ public class Calculator implements CalculatorInterface {
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		}
+
 		return stub;
 	}
 }
